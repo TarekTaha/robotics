@@ -1,0 +1,2 @@
+configfile.cc:159 error   : unable to open world file sspp.cfg : No such file or directory
+server.cc:144 error   : failed to load config file sspp.cfg
