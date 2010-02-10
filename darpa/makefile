@@ -9,4 +9,4 @@ clean:
 	g++ -c LaserBuffer.cpp
 	g++ -c OccupancyGrid.cpp
 	g++ -c CarModel.cpp
-	g++  CarModel.o OccupancyGrid.o LaserBuffer.o laser_scan.o zpr.o -o laser_scan -lglut `pkg-config --libs --cflags playerclient`
+	g++  CarModel.o OccupancyGrid.o LaserBuffer.o laser_scan.o zpr.o -o laser_scan -lglut `pkg-config --libs --cflags playercore`
