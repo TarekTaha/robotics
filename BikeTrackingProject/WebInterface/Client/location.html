@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC “-//W3C//DTD XHTML 1.0 Strict//EN” “http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd”>
+<html xmlns=”http://www.w3.org/1999/xhtml”>
+<head>
+<title>Real Time GPRS based GPS Tracker</title>
+<script src=”http://maps.google.com/maps?file=api&v=1&key=your_key_here” type=”text/javascript”></script>
+<!– Make the document body take up the full screen –>
+
+<style type=”text/css”>
+v\:* {behavior:url(#default#VML);}
+html, body {width: 100%; height: 100%}
+body {margin-top: 0px; margin-right: 0px; margin-left: 0px; margin-bottom: 0px}
+</style>
+
+<script type=”text/javascript”>
+//<![CDATA[
+function load(){
+var map = new GMap(document.getElementById("map"));
+var point = new GPoint(0,0);
+map.addControl(new GLargeMapControl());
+map.addControl(new GMapTypeControl());
+map.centerAndZoom(point, 1);
+window.setTimeout(function(){reloadMap(map)},1000);
+}
+
+function reloadMap(map) {
+
+var request = GXmlHttp.create();
+request.open("GET", "data.xml", true);
+request.onreadystatechange = function() {
+if (request.readyState == 4) {
+var xmlDoc = request.responseXML;
+var markers = xmlDoc.documentElement.getElementsByTagName("marker");
+for (var i = 0; i < markers.length; i++) {
+var point = new
+GPoint(parseFloat(markers[i].getAttribute(“lng”)),
+parseFloat(markers[i].getAttribute(“lat”)));
+var marker = new GMarker(point);
+map.clearOverlays();
+map.addOverlay(marker);
+map.centerAtLatLng(point);
+}
+}
+}
+request.send(null);
+window.setTimeout(function(){reloadMap(map)},1000);
+}
+
+// Monitor the window resize event and let the map know when it occurs
+if (window.attachEvent) {
+window.attachEvent(“onresize”, function() {this.map.onResize()} );
+} else {
+window.addEventListener(“resize”, function() {this.map.onResize()} , false);
+}
+
+//]]>
+</script>
+</head>
+<body onload=”load()”>
+<div id=”map” style=”width: 100%; height:100%;”></div>
+
+</body>
+
+</html>
