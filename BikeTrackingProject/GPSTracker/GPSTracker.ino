@@ -5,7 +5,7 @@
 #define GPSRATE 4800
 #define BUFFSIZ 512
 #define RESPONCE_DELAY 500
-#define MINUTES_TO_UPDATE 2
+#define MINUTES_TO_UPDATE 0.5
 /*****************************************
 * Error codes
 */
@@ -559,6 +559,8 @@ void loop()
       {
         if((millis() - lastGPSUpdate)> gpsUpdateRate)
         {
+          Serial.print("Lat:"); Serial.print(flat,DEC); Serial.print(" Lng:"); Serial.println(flon,DEC);
+          
           myString.print("AT+SSTRSEND=1,\"");
           myString.print(speed);
           myString.print(",");
@@ -569,7 +571,7 @@ void loop()
           myString.print(TinyGPS::cardinal(gps.f_course()));
           myString.print("\"");
           //myString.print(fix_age,DEC);                        
-          sendSMS(myString);
+          //sendSMS(myString);
           blinkLed(statusLed,5,200);
           lastGPSUpdate = millis();
           sendData(myString);
