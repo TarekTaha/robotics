@@ -1,57 +1,73 @@
 #include <TinyGPS.h>
 #include <PString.h>
 
-#define POWERPIN 4
-#define GPSRATE 4800
-#define BUFFSIZ 512
+/*****************************************
+* GSM SM5100b-d Variables
+*****************************************/
+#define GPSRATE 57600
 #define RESPONCE_DELAY 500
-#define MINUTES_TO_UPDATE 0.5
+#define cell Serial1  
+/*****************************************/
+
 /*****************************************
 * Error codes
-*/
-const int ERROR_GPS_UNAVAIL = 0;
-const int ERROR_GPS_STALE = 1;
-const int ERROR_SIM_UNAVAIL = 2;
-const int ERROR_GPRS_FAIL = 3;
-const int ERROR_NETWORK_FAIL = 4;
-const int ERROR_HOST = 5;
-const int ERROR_GPRS_UNKNOWN = 6;
-const int ERROR_GSM_FAIL = 7;
+*****************************************/
+const int     ERROR_GPS_UNAVAIL = 0;
+const int     ERROR_GPS_STALE = 1;
+const int     ERROR_SIM_UNAVAIL = 2;
+const int     ERROR_GPRS_FAIL = 3;
+const int     ERROR_NETWORK_FAIL = 4;
+const int     ERROR_HOST = 5;
+const int     ERROR_GPRS_UNKNOWN = 6;
+const int     ERROR_GSM_FAIL = 7;
+bool          TCP_CONNECTION_READY = false;
 const boolean DEBUG = true;
 /*****************************************/
 
-int relayLine = 8;
-
-char at_buffer[BUFFSIZ]; 
-char buffidx=0;
-bool TCP_CONNECTION_READY = false;
-unsigned long lastTCPSend = millis();
-char mobilenumber[]="0433292432";
-//How long to wait to get the AT responce
-unsigned long timeOut = 10000, gpsUpdateRate = MINUTES_TO_UPDATE*60000;
+/*****************************************
+* Update rate Variables
+*****************************************/ 
+#define MINUTES_TO_UPDATE 0.5
+unsigned long timeOut              = 10000;
+unsigned long gpsUpdateRate        = MINUTES_TO_UPDATE*60000;
+unsigned long pulseAliveUpdateRate = 30000;
+unsigned long smsUpdateRate        = MINUTES_TO_UPDATE*60000;
+unsigned long time2Reset           = 60000;
+unsigned long rebootTime;
 unsigned long lastGPSUpdate;
-int firstTimeInLoop = 1;
+unsigned long lastPulseUpdate;
+unsigned long lastSMSCheck ;
+/****************************************/
+
+/*****************************************
+* GPS Variables
+*****************************************/ 
 int GPRS_registered = 0;
 int GPRS_AT_ready = 0;
 float flat, flon,speed;
 unsigned long fix_age;
-
-const int PRECISION = 11; // Precision of lat/long coordinates
-const int DIAG_DELAY = 2000; // time to pause before replaying diagnostic codes
-const int SEND_DELAY = 10000; // The time to wait before sending the next coordinates
-
-//Will hold the incoming character from the Serial Port.
-char inchar=0;
-char buffer[BUFFSIZ];
-
-PString myString(buffer,sizeof(buffer));
-//Create a 'fake' serial port. Pin 2 is the Rx pin, pin 3 is the Tx pin.
-#define cell Serial1  
-#define gpsSerial Serial2
 TinyGPS gps;
+#define gpsSerial Serial2
+/****************************************/
 
+/*****************************************
+* String Variables
+*****************************************/ 
+#define BUFFSIZ 512
+char    inchar=0;
+char    buffer[BUFFSIZ];
+PString myString(buffer,sizeof(buffer));
+char    inputBuffer[BUFFSIZ]; 
+char    buffidx=0;
+/****************************************/
+
+#define POWERPIN 4
+const int resetPin = 7;
 int statusLed = 13;
 int errorLed  = 12;
+int relayLine = 8;
+char mobilenumber[]="0433292432";
+
 /**
 * Blink a few times so we know all is right with the world
 */
@@ -72,18 +88,19 @@ static void blinkLed(int lPin, int flashTimes, int dly)
     digitalWrite(lPin, LOW);
     delay(dly);
   }
-  delay(DIAG_DELAY);
 }
 
 /**
 * Flash an LED X amount of times and write to console based on the error code given
 */
-static void error(const int errorCode) {
+static void error(const int errorCode) 
+{
   int flashTimes = 0;
   int i = 0;
   boolean severity = true;
   
-  switch(errorCode) {
+  switch(errorCode) 
+  {
     case ERROR_GPS_UNAVAIL:
       Serial.println("ERROR: GPS Unavailable");
       severity = false;
@@ -107,7 +124,7 @@ static void error(const int errorCode) {
     case ERROR_GPRS_UNKNOWN:
       flashTimes = 7;
       Serial.print("ERROR: Unknown:");
-      Serial.println(at_buffer);
+      Serial.println(inputBuffer);
       break;
     case ERROR_GSM_FAIL:
       flashTimes = 8;
@@ -147,12 +164,12 @@ void readAndProcessATString()
       {
         if(buffidx==0)
           continue;
-        at_buffer[buffidx] = '\0';
+        inputBuffer[buffidx] = '\0';
         buffidx = 0;
         parsedCorrectly = true;
         break;
       }
-      at_buffer[buffidx++]= c;
+      inputBuffer[buffidx++]= c;
     }
   }
   if(parsedCorrectly)
@@ -162,82 +179,82 @@ void readAndProcessATString()
   else
   {
     Serial.print("Timed out:");
-    Serial.println(at_buffer);
-    at_buffer[0]='\0'; // clear the buffer
+    Serial.println(inputBuffer);
+    inputBuffer[0]='\0'; // clear the buffer
   }
 }
 
 /* Processes the AT String to determine if GPRS is registered and AT is ready */
 void processATString() 
 {
-  if( strcmp(at_buffer, "+SIND: 1") == 0 ) 
+  if( strcmp(inputBuffer, "+SIND: 1") == 0 ) 
   {
     Serial.println("SIM card inserted");
     blinkLed(statusLed,5,100);
   }  
-  else if( strstr(at_buffer, "+SIND: 3") != 0 ) 
+  else if( strstr(inputBuffer, "+SIND: 3") != 0 ) 
   {
     Serial.println("AT Module is partially ready");
     blinkLed(statusLed,5,100);
   }
-  else if( strstr(at_buffer, "+SIND: 4") != 0 ) 
+  else if( strstr(inputBuffer, "+SIND: 4") != 0 ) 
   {
     GPRS_AT_ready=1;
     Serial.println("AT Module is totally ready");
     blinkLed(statusLed,5,100);
   }
-  else if( strstr(at_buffer, "+SIND: 7") != 0 ) 
+  else if( strstr(inputBuffer, "+SIND: 7") != 0 ) 
   {
     Serial.println("Service is available for Emergency call only");
   }  
-  else if( strstr(at_buffer, "+SIND: 8") != 0 ) 
+  else if( strstr(inputBuffer, "+SIND: 8") != 0 ) 
   {
     GPRS_registered = 0;
     Serial.println("GPRS Network Not Available");
   }
-  else if( strstr(at_buffer, "+SIND: 11") != 0 ) 
+  else if( strstr(inputBuffer, "+SIND: 11") != 0 ) 
   {
     GPRS_registered = 1;
     Serial.println("GPRS Registered");
     blinkLed(statusLed,5,100);
   }  
-  else if( strstr(at_buffer, "+SOCKSTATUS:  1,1") != 0 ) 
+  else if( strstr(inputBuffer, "+SOCKSTATUS:  1,1") != 0 ) 
   {
     TCP_CONNECTION_READY = 1;
     Serial.println("TCP Connection Ready");
-    Serial.print("Responce:"); Serial.println(at_buffer);
+    Serial.print("Responce:"); Serial.println(inputBuffer);
   }  
-  else if( strstr(at_buffer, "+SOCKSTATUS:  1,0") != 0 ) 
+  else if( strstr(inputBuffer, "+SOCKSTATUS:  1,0") != 0 ) 
   {
     TCP_CONNECTION_READY = 0;
     error(ERROR_HOST);
-    Serial.print("Responce:"); Serial.println(at_buffer);    
+    Serial.print("Responce:"); Serial.println(inputBuffer);    
   }    
-  else if (strstr(at_buffer, "+SIND: 10,\"SM\",0,\"FD\",0,\"LD\",0,\"MC\",0,\"RC\",0,\"ME\",0") != 0 || strstr(at_buffer, "+SIND: 0") != 0) 
+  else if (strstr(inputBuffer, "+SIND: 10,\"SM\",0,\"FD\",0,\"LD\",0,\"MC\",0,\"RC\",0,\"ME\",0") != 0 || strstr(inputBuffer, "+SIND: 0") != 0) 
   {
     error(ERROR_SIM_UNAVAIL);
   }  
-  else if ( (strstr(at_buffer, "+SIND: 10,\"SM\",1,\"FD\",1,\"LD\",1,\"MC\",1,\"RC\",1,\"ME\",1") != 0) || (strstr(at_buffer, "+SIND: 10,\"SM\",1,\"FD\",1,\"LD\",1,\"MC\",1,\"RC\",1,\"ME") != 0)) 
+  else if ( (strstr(inputBuffer, "+SIND: 10,\"SM\",1,\"FD\",1,\"LD\",1,\"MC\",1,\"RC\",1,\"ME\",1") != 0) || (strstr(inputBuffer, "+SIND: 10,\"SM\",1,\"FD\",1,\"LD\",1,\"MC\",1,\"RC\",1,\"ME") != 0)) 
   {
     Serial.println("SIM card Detected");
     successLED();
   }
-  else if (strstr(at_buffer, "+CME ERROR: 29") != 0) 
+  else if (strstr(inputBuffer, "+CME ERROR: 29") != 0) 
   {
     return;
   }
-  else if (strstr(at_buffer, "+CME ERROR") != 0) 
+  else if (strstr(inputBuffer, "+CME ERROR") != 0) 
   {
     error(ERROR_GPRS_UNKNOWN);
   }
-  else if (strstr(at_buffer, "OK") != 0 || strstr(at_buffer, "NO CARRIER") != 0) 
+  else if (strstr(inputBuffer, "OK") != 0 || strstr(inputBuffer, "NO CARRIER") != 0) 
   {
     successLED();
   }
   else
   {
     Serial.print("Responce:");
-    Serial.println(at_buffer);
+    Serial.println(inputBuffer);
   }
 }
 
@@ -350,22 +367,6 @@ static void sendATCommand(const char* ATCom)
   delay(RESPONCE_DELAY);
 }
 
-void registerGRPS()
-{
-  while (GPRS_registered == 0 || GPRS_AT_ready == 0) 
-  {
-    readAndProcessATString();
-  }
-  if(POWERPIN) 
-  {
-    pinMode(POWERPIN, OUTPUT);
-  }
-  pinMode(13, OUTPUT);
-  Serial.println("Cell Module Initialized");
-  digitalWrite(POWERPIN, LOW);
-  delay(RESPONCE_DELAY);  
-}
-/*
 static void sendData2(const char* data) 
 {
   digitalWrite(statusLed, HIGH);
@@ -381,7 +382,7 @@ static void sendData2(const char* data)
   
   // Change 0.0.0.0 to reflect the server you want to connect to
   Serial.println("Configuring TCP connection to server");
-  sendATCommand("AT+SDATACONF=1,\"TCP\",\"blackcoder.dyndns.org\",8081");
+  sendATCommand("AT+SDATACONF=1,\"TCP\",\"yaz.dyndns.org\",80");
     
   Serial.println("Starting TCP Connection");
   sendATCommand("AT+SDATASTART=1,1");
@@ -393,6 +394,8 @@ static void sendData2(const char* data)
   
   Serial.println("Sending data");
   sendATCommand(data);
+  
+  delay(1000);
   
   //Serial.println("Getting status");
   //sendATCommand("AT+SDATASTATUS=1");
@@ -412,7 +415,7 @@ static void sendData2(const char* data)
   
   digitalWrite(statusLed, LOW);
 }
-*/
+
 static void sendData(const char* dataString) 
 {
   digitalWrite(statusLed, HIGH);
@@ -428,26 +431,27 @@ static void sendData(const char* dataString)
   
   // Change 0.0.0.0 to reflect the server you want to connect to
   Serial.println("Configuring TCP connection to server");
-  sendATCommand("AT+SDATACONF=1,\"TCP\",\"blackcoder.dyndns.org\",8081");
+  sendATCommand("AT+SDATACONF=1,\"TCP\",\"yaz.dyndns.org\",80");
     
   Serial.println("Starting TCP Connection");
   sendATCommand("AT+SDATASTART=1,1");
   delay(1000);
+  /*
   unsigned long startingTime=millis();
   while(!TCP_CONNECTION_READY && (millis()-startingTime) < timeOut)
   {
     sendATCommand("AT+SDATASTATUS=1");
     delay(1000);
   }  
- 
+ */
   Serial.println("Sending data");
-  sendATCommand(myString);
+  sendATCommand(dataString);
 
   blinkLed(statusLed,5,200);   
-   
+  /*
   Serial.println("Getting status");
   sendATCommand("AT+SDATASTATUS=1");
-  
+  */
   Serial.println("Close connection");
   sendATCommand("AT+SDATASTART=1,0");
   
@@ -487,9 +491,28 @@ void initializeRecievingSMS()
   sendATCommand("AT+CNMI=3,3,0,0"); 
 }
 
+void resetUnit()
+{
+   digitalWrite(resetPin, LOW); //Pulling the RESET pin LOW triggers the reset.
+}
+void registerGRPS()
+{
+  while (GPRS_registered == 0 || GPRS_AT_ready == 0) 
+  {
+    readAndProcessATString();
+    if((millis()-rebootTime)>time2Reset)
+      resetUnit();
+  }
+  pinMode(13, OUTPUT);
+  Serial.println("Cell Module Initialized");
+  delay(RESPONCE_DELAY);  
+}
+
 // Do system wide initialization here in this function
 void setup()
 {
+  digitalWrite(resetPin, HIGH); //We need to set it HIGH immediately on boot
+  pinMode(resetPin,OUTPUT);     //We can declare it an output ONLY AFTER it's HIGH  
   // prepare the digital output pins
   pinMode(relayLine, OUTPUT);
   digitalWrite(relayLine, LOW);  
@@ -501,39 +524,30 @@ void setup()
   //Initialize serial ports for communication.
   Serial.begin(9600);
   cell.begin(9600);
-  gpsSerial.begin(57600);
+  gpsSerial.begin(GPSRATE);
   //Let's get started!
   Serial.println("Starting SM5100B Communication...");
+  rebootTime = millis();
   delay(5000);
   /* Currently GPRS is not registered and AT is not ready */
   GPRS_registered = 0;
   GPRS_AT_ready = 0;
   TCP_CONNECTION_READY = 0;
-  lastGPSUpdate = millis();
+  lastGPSUpdate   = millis();
+  lastPulseUpdate = millis();
+  lastSMSCheck    = millis();
   registerGRPS();
-  //sendSMS("Cell Module registered and ready.");
-  delay(5000);
+  delay(1000);
   initializeRecievingSMS();  
 }
-unsigned long timeSinceLastSMSCheck = millis();
 void loop() 
 {
-  if((millis() - timeSinceLastSMSCheck)>30000)
+  if((millis() - lastSMSCheck)>smsUpdateRate)
   {
     Serial.println("Checking for SMS");
     //checkForSMS();    
-    timeSinceLastSMSCheck = millis();
-    /*
-    myString.begin();
-    myString.print("AT+SSTRSEND=1,\"");
-    myString.print("speed=10&lat=20&lng=30&course=40 HTTP/1.0");
-    //myString.print("AT+SSTRSEND=1,\"GET /e107_svn/test.php?speed=10&lat=20&lng=30&course=40 HTTP/1.0");
-    //myString.print("AT+SSTRSEND=1,\"/e107_svn/test.php?speed=10&lat=20&lng=30&course=40");
-    //myString.print("AT+SSTRSEND=1,\"");
-    myString.print("\"");
-    sendData(myString);
-    */
-   }
+    lastSMSCheck = millis();
+  }
   while(gpsSerial.available()) 
   {
     int c = gpsSerial.read();
@@ -559,8 +573,8 @@ void loop()
       {
         if((millis() - lastGPSUpdate)> gpsUpdateRate)
         {
-          Serial.print("Lat:"); Serial.print(flat,DEC); Serial.print(" Lng:"); Serial.println(flon,DEC);
-          
+          Serial.print("Lat:"); Serial.print(flat,DEC); Serial.print(" Lng:"); Serial.println(flon,DEC);       
+          myString.begin();   
           myString.print("AT+SSTRSEND=1,\"");
           myString.print(speed);
           myString.print(",");
@@ -578,6 +592,15 @@ void loop()
         }
       }
     }
+  }
+  if( (millis() - lastPulseUpdate)>  pulseAliveUpdateRate)
+  {
+    myString.begin();
+    myString.print("AT+SSTRSEND=1,\"");
+    myString.print("Still Alive.");
+    myString.print("\"");
+    lastPulseUpdate = millis();
+    sendData(myString);    
   }
   blinkLed(statusLed,1,50);
 }

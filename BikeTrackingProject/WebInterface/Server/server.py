@@ -11,11 +11,10 @@ class SendContent(Protocol):
         print 'Accepted connection'
     def dataReceived(self, data):
         date = time.time()
-	print "The fucking data is:" + data;
-	return;
         values = data.split(',');
         if len(values) != 4:
-            print 'Error: Bad Data'
+            print 'Recieved: Bad Data'
+	    return;
 
         db = None;
         try:
