@@ -447,7 +447,6 @@ void registerGRPS()
 {
   while (GPRS_registered == 0 || GPRS_AT_ready == 0) 
   {
-    Serial.println("-------------------- Checking for Module Responce------------------");
     readAndProcessATString();
     if((millis()-rebootTime)>time2Reset)
     {
