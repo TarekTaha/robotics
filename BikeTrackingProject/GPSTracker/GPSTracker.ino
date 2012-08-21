@@ -32,7 +32,7 @@ unsigned long timeOut              = 10000;
 unsigned long gpsUpdateRate        = MINUTES_TO_UPDATE*60000;
 unsigned long pulseAliveUpdateRate = 30000;
 unsigned long smsUpdateRate        = MINUTES_TO_UPDATE*60000;
-unsigned long time2Reset           = 60000;
+unsigned long time2Reset           = 120000;
 unsigned long rebootTime;
 unsigned long lastGPSUpdate;
 unsigned long lastPulseUpdate;
@@ -62,7 +62,6 @@ char    buffidx=0;
 /****************************************/
 
 #define POWERPIN 4
-const int resetPin = 7;
 int statusLed = 13;
 int errorLed  = 12;
 int relayLine = 8;
@@ -257,6 +256,7 @@ void processATString()
     Serial.println(inputBuffer);
   }
 }
+void (*softReset) (void) = 0; //declare reset function @ address 0
 
 void checkForSMS()
 {
@@ -264,6 +264,7 @@ void checkForSMS()
   readAndProcessATString();
   delay(100);
   bool noResponce = true;
+  unsigned long startTiming = millis();
   /*
   while(noResponce)
    {
@@ -297,9 +298,8 @@ void checkForSMS()
    }
    }
    */
-
   //If a character comes in from the cellular module...
-  while(noResponce)
+  while(noResponce && ((millis()-startTiming) < timeOut))
   {  
     if(cell.available() >0)
     {
@@ -367,57 +367,9 @@ static void sendATCommand(const char* ATCom)
   delay(RESPONCE_DELAY);
 }
 
-static void sendData2(const char* data) 
-{
-  digitalWrite(statusLed, HIGH);
-
-  Serial.println("Setting up PDP Context");
-  sendATCommand("AT+CGDCONT=1,\"IP\",\"purtona.net\"");
-    
-  Serial.println("Configure APN");
-  sendATCommand("AT+CGPCO=0,\"\",\"\", 1");
-  
-  Serial.println("Activate PDP Context");
-  sendATCommand("AT+CGACT=1,1");
-  
-  // Change 0.0.0.0 to reflect the server you want to connect to
-  Serial.println("Configuring TCP connection to server");
-  sendATCommand("AT+SDATACONF=1,\"TCP\",\"yaz.dyndns.org\",80");
-    
-  Serial.println("Starting TCP Connection");
-  sendATCommand("AT+SDATASTART=1,1");
-  
-  delay(1000);
-  
-  //Serial.println("Getting status");
-  //sendATCommand("AT+SDATASTATUS=1");
-  
-  Serial.println("Sending data");
-  sendATCommand(data);
-  
-  delay(1000);
-  
-  //Serial.println("Getting status");
-  //sendATCommand("AT+SDATASTATUS=1");
-  
-  //Serial.println("Reading responce");
-  //sendATCommand("AT+SDATAREAD=1");
-
-  Serial.println("Close connection");
-  sendATCommand("AT+SDATASTART=1,0");
-  
-  Serial.println("Disable PDP Context");
-  sendATCommand("AT+CGACT=0,1");
-  
-  // Clear string and flash LED
-  myString.begin();
-  successLED();
-  
-  digitalWrite(statusLed, LOW);
-}
-
 static void sendData(const char* dataString) 
 {
+  Serial.println("-------------------- Sending TCP Data ------------------");
   digitalWrite(statusLed, HIGH);
 
   Serial.println("Setting up PDP Context");
@@ -491,17 +443,17 @@ void initializeRecievingSMS()
   sendATCommand("AT+CNMI=3,3,0,0"); 
 }
 
-void resetUnit()
-{
-   digitalWrite(resetPin, LOW); //Pulling the RESET pin LOW triggers the reset.
-}
 void registerGRPS()
 {
   while (GPRS_registered == 0 || GPRS_AT_ready == 0) 
   {
+    Serial.println("-------------------- Checking for Module Responce------------------");
     readAndProcessATString();
     if((millis()-rebootTime)>time2Reset)
-      resetUnit();
+    {
+      Serial.println("Resetting unit");
+      softReset();
+    }
   }
   pinMode(13, OUTPUT);
   Serial.println("Cell Module Initialized");
@@ -511,8 +463,6 @@ void registerGRPS()
 // Do system wide initialization here in this function
 void setup()
 {
-  digitalWrite(resetPin, HIGH); //We need to set it HIGH immediately on boot
-  pinMode(resetPin,OUTPUT);     //We can declare it an output ONLY AFTER it's HIGH  
   // prepare the digital output pins
   pinMode(relayLine, OUTPUT);
   digitalWrite(relayLine, LOW);  
@@ -536,6 +486,7 @@ void setup()
   lastGPSUpdate   = millis();
   lastPulseUpdate = millis();
   lastSMSCheck    = millis();
+  Serial.println("-------------------- Registering GPRS ------------------");
   registerGRPS();
   delay(1000);
   initializeRecievingSMS();  
@@ -544,7 +495,7 @@ void loop()
 {
   if((millis() - lastSMSCheck)>smsUpdateRate)
   {
-    Serial.println("Checking for SMS");
+    Serial.println("-------------------- Checking for SMS ------------------");
     //checkForSMS();    
     lastSMSCheck = millis();
   }
@@ -595,6 +546,7 @@ void loop()
   }
   if( (millis() - lastPulseUpdate)>  pulseAliveUpdateRate)
   {
+    Serial.println("-------------------- Sending Pulse ------------------");
     myString.begin();
     myString.print("AT+SSTRSEND=1,\"");
     myString.print("Still Alive.");

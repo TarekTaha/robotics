@@ -13,7 +13,7 @@ class SendContent(Protocol):
         date = time.time()
         values = data.split(',');
         if len(values) != 4:
-            print 'Recieved: Bad Data'
+            print 'Recieved:' + data;
 	    return;
 
         db = None;
