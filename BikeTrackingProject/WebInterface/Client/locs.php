@@ -17,7 +17,7 @@
 +---------------------------------------------------------------+
 */
 
-	require_once("../class2.php");
+	require_once("class2.php");
 	header("Content-type: application/x-javascript");
 	$userid = $_GET["userid"];
 	global $pref;

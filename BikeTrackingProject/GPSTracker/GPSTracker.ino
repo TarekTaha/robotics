@@ -1,5 +1,10 @@
 #include <TinyGPS.h>
 #include <PString.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+
+// set the LCD address to 0x27 for a 16 chars and 2 line display
+LiquidCrystal_I2C lcd(0x27,16,2);  
 
 /*****************************************
  * GSM SM5100b-d Variables
@@ -28,7 +33,7 @@ const boolean DEBUG = true;
  * Update rate Variables
  *****************************************/
 #define MINUTES_TO_UPDATE 0.25
-unsigned long timeOut              = 10000;
+unsigned long timeOut              = 30000;
 unsigned long gpsUpdateRate        = MINUTES_TO_UPDATE*60000;
 unsigned long pulseAliveUpdateRate = 30000;
 unsigned long smsUpdateRate        = MINUTES_TO_UPDATE*60000;
@@ -61,6 +66,12 @@ PString myString(buffer,sizeof(buffer));
 char    inputBuffer[BUFFSIZ]; 
 char    buffidx=0;
 /****************************************/
+
+const String APN       = "purtona.net";      // access-point name for GPRS  ( TPG = yesinternet )
+const String ip        = "tarektaha.com";    // IP address of server we're connecting to
+const String host      = "tarektaha.com";    // required in HTTP 1.1 - what's the name of the host at this IP address?
+const String useragent = "Mozilla/5.0"; // for our purposes the user agent doesn't matter - if I understand correctly it's helpful to use something generic the server will recognize
+const String request   = "GET /tracker.php?x=1&y=2&z=3 HTTP/1.1";
 
 #define POWERPIN 4
 int statusLed = 13;
@@ -143,6 +154,55 @@ static void error(const int errorCode)
    }
    */
 }
+/*
+String getMessage() 
+{
+  unsigned long startTiming= millis();
+  bool parsedCorrectly = false;
+  //Wait for  a max of X seconds until we get something
+  Serial.print("reading responce:");
+  String s="";
+  while( (millis()-startTiming) < timeOut )
+  {
+    if(cell.available()>0) 
+    {
+      s = s+(char)cell.read();
+      if (s.length()>1 && s[s.length()-2]=='\r' && s[s.length()-1]=='\n') 
+      { 
+        // if last 2 chars are \r\n
+        if (s==" \r\n" || s=="\r\n") 
+        { 
+          // skip these, move on
+          s="";
+        }
+        else 
+        { 
+          // we have a message!
+          Serial.println(s.substring(0,s.length()-2));
+          return s.substring(0,s.length()-2);
+        }
+      }
+    }
+  }
+  
+}
+*/
+
+// keep reading characters until we get char c
+void waitFor(char c) 
+{
+  while(1) 
+  {
+    if(cell.available()>0) 
+    {
+      if ((char)cell.read() == c) 
+      {
+        delay(100);
+        return;
+      }
+    }
+  }
+}
 
 /* Reads AT String from the SM5100B GSM/GPRS Module */
 void readAndProcessATString() 
@@ -151,17 +211,22 @@ void readAndProcessATString()
   unsigned long startTiming= millis();
   bool parsedCorrectly = false;
   //Wait for  a max of 10 seconds until we get something
+  Serial.print("reading responce:");
   while( (millis()-startTiming) < timeOut )
   {
     if(cell.available() > 0) 
     {
       c=cell.read();
-      //Serial.write(c);      
+      Serial.write(c);      
       if (c == '\r') 
       {
         continue;
       }
-      if ((buffidx == (BUFFSIZ - 1)) || (c == '\n'))
+      else if (c == '>') 
+      {
+        return;
+      }
+      else if ((buffidx == (BUFFSIZ - 1)) || (c == '\n'))
       {
         if(buffidx==0)
           continue;
@@ -179,12 +244,27 @@ void readAndProcessATString()
   }
   else
   {
-    Serial.print("Timed out:");
+    Serial.print("\nTimed out:");
     Serial.println(inputBuffer);
     inputBuffer[0]='\0'; // clear the buffer
   }
 }
 
+/*
+  The +SIND response from the cellular module tells the the modules status. Here's a quick run-down of the response meanings:
+  0 SIM card removed
+  1 SIM card inserted
+  2 Ring melody
+  3 AT module is partially ready
+  4 AT module is totally ready
+  5 ID of released calls
+  6 Released call whose ID=<idx>
+  7 The network service is available for an emergency call
+  8 The network is lost
+  9 Audio ON
+  10 Show the status of each phonebook after init phrase
+  11 Registered to network
+*
 /* Processes the AT String to determine if GPRS is registered and AT is ready */
 void processATString() 
 {
@@ -225,7 +305,19 @@ void processATString()
     Serial.println("TCP Connection Ready");
     Serial.print("Responce:"); 
     Serial.println(inputBuffer);
+  }
+  else if( strstr(inputBuffer, "+STCPD:1") != 0 ) 
+  {
+    Serial.println("Server sent data");
+    Serial.print("Responce:"); 
+    Serial.println(inputBuffer);
   }  
+  else if( strstr(inputBuffer, "+STCPC:1") != 0 ) 
+  {
+    Serial.println("socket closed");
+    Serial.print("Responce:"); 
+    Serial.println(inputBuffer);
+  }    
   else if( strstr(inputBuffer, "+SOCKSTATUS:  1,0") != 0 ) 
   {
     TCP_CONNECTION_READY = 0;
@@ -271,14 +363,14 @@ void checkForSMS()
   unsigned long startTiming = millis();
   char smsBuffer[BUFFSIZ];
   int charIndex=0;
-  while(noResponce)
+  while(noResponce && (millis()-startTiming) < 5000 )
   {
     while(cell.available() >0)
     {
       inchar=cell.read();
-      delay(10);
       smsBuffer[charIndex++]=inchar;    
       noResponce = false;
+      delay(10);
     }
   }
   smsBuffer[charIndex]='\0';
@@ -302,7 +394,7 @@ void checkForSMS()
         }
       }
       // g is for get gps position
-      else if(smsBuffer[2]=='g')
+      else if(smsBuffer[1]=='g')
       {
          myString.begin();
          myString.print("Long:");
@@ -313,14 +405,14 @@ void checkForSMS()
          myString.print(fix_age,DEC);                        
          sendSMS(myString);
          blinkLed(statusLed,5,200);
-         //cell.println("AT+CMGD=1,4"); // delete all SMS
-         //readAndProcessATString();        
       }      
     }
     else
     {
       Serial.print("Normal SMS String Received:"); Serial.println(smsBuffer);    
     }    
+    cell.println("AT+CMGD=1,4"); // delete all SMS
+    readAndProcessATString();    
   }
 }
 
@@ -335,6 +427,74 @@ static void sendATCommand(const char* ATCom)
   readAndProcessATString();
   delay(RESPONCE_DELAY);
 }
+// receive string such as "SOCKSTATUS: 1,1,0102,10,10,0"
+// 0 is connection id. 1 is whether connected or not. 2 is status (0104 is connecting, 0102 is connected, others)
+// 3 is sent bytes. 4 is acknowledged bytes. 5 is "received data counter"
+// THIS FUNCTION WILL check that sent bytes == ack bytes, and return that value
+// return 0 if they don't match or if amount of data is 0
+int checkSocketString(String s) 
+{
+  if (socketStringSlice(3,s) == 0)
+    return 0;
+  else if (socketStringSlice(3,s) == socketStringSlice(4,s))
+    return socketStringSlice(3,s);
+  else
+    return 0;
+}
+
+// returns the index of the nth instance of char c in String s
+int nthIndexOf(int n, char c, String s) 
+{
+  int index=0;
+  for (int i=0; i<=n; i++) 
+  {
+    index = s.indexOf(c,index+1);
+  }
+  return index;
+}
+
+// expects string such as "SOCKSTATUS: 1,1,0102,10,10,0"
+// returns nth chunk of data, delimited by commas
+int socketStringSlice(int n, String s) 
+{
+  String slice = s.substring(nthIndexOf(n-1,',',s)+1,nthIndexOf(n,',',s));
+  char cArray[slice.length()+1];
+  slice.toCharArray(cArray, sizeof(cArray));
+  return atoi(cArray);
+}
+
+// keep reading the serial messages we receive from the module
+// loop forever until we get a nonzero string ending in \r\n - print and return that.
+// TODO: implement a timeout that returns 0?
+String getMessage() {
+  String s="";
+  while(1) {
+    if(cell.available()>0) {
+      s = s+(char)cell.read();
+      if (s.length()>1 && s[s.length()-2]=='\r' && s[s.length()-1]=='\n') { // if last 2 chars are \r\n
+        if (s==" \r\n" || s=="\r\n") { // skip these, move on
+          s="";
+        }
+        else { // we have a message!
+          Serial.println(s.substring(0,s.length()-2));
+          return s.substring(0,s.length()-2);
+        }
+      }
+    }
+  }
+}
+
+// for eating a single message we expect from the module
+// prints out the next message from the module. if it's not the expected value, die
+void waitFor(String s) 
+{
+  String message = getMessage();
+  if (message != s) 
+  {
+    Serial.println("Wait, that's not what we were expecting. We wanted \""+s+"\"");
+  }
+  delay(100); // wait for a tiny bit before sending the next command
+}
 
 static void sendData(const char* dataString) 
 {
@@ -342,6 +502,7 @@ static void sendData(const char* dataString)
   digitalWrite(statusLed, HIGH);
 
   Serial.println("Setting up PDP Context");
+  // LEBARA
   sendATCommand("AT+CGDCONT=1,\"IP\",\"purtona.net\"");
 
   Serial.println("Configure APN");
@@ -349,30 +510,87 @@ static void sendData(const char* dataString)
 
   Serial.println("Activate PDP Context");
   sendATCommand("AT+CGACT=1,1");
-
+  
   // Change 0.0.0.0 to reflect the server you want to connect to
   Serial.println("Configuring TCP connection to server");
-  sendATCommand("AT+SDATACONF=1,\"TCP\",\"yaz.dyndns.org\",80");
+  sendATCommand("AT+SDATACONF=1,\"TCP\",\"tarektaha.com\",80");
 
   Serial.println("Starting TCP Connection");
   sendATCommand("AT+SDATASTART=1,1");
-  delay(1000);
-  /*
+  delay(5000);
+  
   unsigned long startingTime=millis();
-   while(!TCP_CONNECTION_READY && (millis()-startingTime) < timeOut)
-   {
+  while(!TCP_CONNECTION_READY && (millis()-startingTime) < timeOut)
+  {
    sendATCommand("AT+SDATASTATUS=1");
    delay(1000);
-   }  
-   */
-  Serial.println("Sending data");
-  sendATCommand(dataString);
-
-  blinkLed(statusLed,5,200);   
+  }  
   /*
-  Serial.println("Getting status");
-   sendATCommand("AT+SDATASTATUS=1");
-   */
+  char str [] = "GET /test.php?x=1&y=2&z=3 HTTP/1.0\r\n\r\n";   
+  Serial.println("Sending data");
+  cell.print("AT+SDATATSEND=1,3\r");
+  delay(500);
+  //cell.write("GET");
+  cell.print(47,HEX);
+  cell.print(45,HEX);
+  cell.print(54,HEX);
+  //cell.print(13); //Send CR
+  //cell.print(10); //Send el LF
+  delay(3000);        
+  byte ctrlZ = 26;
+  cell.write(ctrlZ);
+  Serial.println("Data Sent");
+  //sendATCommand(dataString);
+  */
+  Serial.println("Sending HTTP packet...");
+  // we're now connected and can send HTTP packets!
+  int packetLength = 26+host.length()+request.length()+useragent.length(); // 26 is size of the non-variable parts of the packet, see SIZE comments below  
+  cell.print("AT+SDATATSEND=1,"+String(packetLength)+"\r");
+  waitFor('>'); // wait for GSM module to tell us it's ready to recieve the packet
+  cell.print(request+"\r\n"); // SIZE: 2
+  cell.print("Host: "+host+"\r\n"); // SIZE: 8
+  cell.print("User-Agent: "+useragent+"\r\n\r\n"); // SIZE: 16
+  cell.write(26); // ctrl+z character: send the packet
+  readAndProcessATString();
+  
+  blinkLed(statusLed,5,200);   
+
+  // now we're going to keep checking the socket status forever
+  // break when the server tells us it acknowledged data
+  bool success = false;
+  while (1) 
+  {
+    cell.println("AT+SDATASTATUS=1"); // we'll get back SOCKSTATUS and then OK
+    String s = getMessage(); // we want s to contain the SOCKSTATUS message
+    if (s == "+STCPD:1") // this means server sent data. cool, but we want to see SOCKSTATUS, so let's get next message
+      s = getMessage();
+    if (s == "+STCPC:1") // this means socket closed. cool, but we want to see SOCKSTATUS, so let's get next message
+      s = getMessage();
+    waitFor("OK");
+    
+    if (!s.startsWith("+SOCKSTATUS")) 
+    {
+      Serial.println("Wait, this isn't the SOCKSTATUS message!");
+      success  = false;
+      break;
+    }
+    if (checkSocketString(s) == packetLength) // checks that packetLength bytes have been acknowledged by server
+    {
+      success = true;
+      break; // we're good!
+    }
+    else 
+    {
+      Serial.println("Sent data not yet acknowledged by server, waiting 1 second and checking again.");
+      delay(1000);
+    }
+  }
+  if(success)
+    Serial.println("Yes! Sent data acknowledged by server!");
+  /*
+  Serial.println("Getting Send status");
+  sendATCommand("AT+SDATASTATUS=1");
+  */
   Serial.println("Close connection");
   sendATCommand("AT+SDATASTART=1,0");
 
@@ -415,7 +633,7 @@ void initializeRecievingSMS()
 void resetUnit()
 {
   Serial.println("Resetting Unit");
-  //softReset();
+  softReset();
   digitalWrite(7, LOW); //Pulling the RESET pin LOW triggers the reset.
 }
 
@@ -424,22 +642,32 @@ void registerGRPS()
   while (GPRS_registered == 0 || GPRS_AT_ready == 0) 
   {
     //Serial.println("-------------------- Checking for Module Responce------------------");
+    //sendATCommand("AT+SBAND=4");
     readAndProcessATString();
     if((millis()-rebootTime)>time2Reset)
     {
+      rebootTime = millis();
       Serial.println("Resetting unit");
+      lcd.print("Resetting unit");
       resetUnit();
     }
   }
   disconnected = false;
   pinMode(13, OUTPUT);
   Serial.println("Cell Module Initialized");
+  Serial.println("Attaching GPRS...");
+  cell.println("AT+CGATT=1");
+  readAndProcessATString();
   delay(RESPONCE_DELAY);  
 }
 
 // Do system wide initialization here in this function
 void setup()
 {
+  lcd.init();                      // initialize the lcd 
+   // Print a message to the LCD.
+  lcd.backlight();  
+ 
   digitalWrite(resetPin, HIGH); //We need to set it HIGH immediately on boot
   pinMode(resetPin,OUTPUT);     //We can declare it an output ONLY AFTER it's HIGH  
   // prepare the digital output pins
@@ -458,6 +686,7 @@ void setup()
   Serial.println("Starting SM5100B Communication...");
   rebootTime = millis();
   delay(5000);
+
   /* Currently GPRS is not registered and AT is not ready */
   GPRS_registered = 0;
   GPRS_AT_ready = 0;
@@ -509,19 +738,19 @@ void loop()
           Serial.print(" Lng:"); 
           Serial.println(flon,DEC);       
           myString.begin();   
-          myString.print("AT+SSTRSEND=1,\"");
-          myString.print(speed);
-          myString.print(",");
-          myString.print(flat, DEC);
-          myString.print(",");
-          myString.print(flon, DEC);
-          myString.print(",");
-          myString.print(TinyGPS::cardinal(gps.f_course()));
-          myString.print("\"");
+//          myString.print("AT+SSTRSEND=1,\"");
+//          myString.print(speed);
+//          myString.print(",");
+//          myString.print(flat, DEC);
+//          myString.print(",");
+//          myString.print(flon, DEC);
+//          myString.print(",");
+//          myString.print(TinyGPS::cardinal(gps.f_course()));
+//          myString.print("\"");
           //myString.print(fix_age,DEC);                        
-          //sendSMS(myString);
+          //sendSMS(myString);          
           blinkLed(statusLed,5,200);
-          lastGPSUpdate = millis();
+          lastGPSUpdate = millis();      
           sendData(myString);
         }
       }
@@ -533,7 +762,7 @@ void loop()
     myString.begin();
     myString.print("AT+SSTRSEND=1,\"");
     myString.print("Still Alive.");
-    myString.print("\"");
+    myString.print("\"");    
     lastPulseUpdate = millis();
     sendData(myString);    
   }
