@@ -71,7 +71,7 @@ void setup()
   mySerial.write(RESET_ENCODERS);         
   mySerial.write(CMD);                                            // Set mode to 2, Both motors controlled by writing to speed 1
   mySerial.write(SET_MODE);
-  mySerial.write(2);    
+  mySerial.write(3);    
   
   mySerial.write(CMD);                                            // Get software version of MD25
   mySerial.write(GET_VER);
@@ -82,27 +82,33 @@ void setup()
 
 void loop()
 { 
-  while(encValue < 3000)
+  int noTurn = 0;
+  while(encValue < 1000)
   {
     // While encoder 1 value less than 3000 move forward
-    mySerial.write(CMD);                  // Set motors to drive forward at full speed
+    mySerial.write(CMD);                
     mySerial.write(SET_SPEED1);
-    mySerial.write(150);
+    mySerial.write(127);
+    
+    mySerial.write(CMD);                 
+    mySerial.write(SET_SPEED2_TURN);
+    mySerial.write(noTurn);    
+    
     encValue = readEncoder();
     Serial.println(encValue);
     readVolts();
   }
   delay(100);
-  while(encValue > 100)
+  while(encValue > 1000)
   {
     mySerial.write(CMD);                  // Drive motors reverse at full speed
     mySerial.write(SET_SPEED1);
-    mySerial.write(100);
+    mySerial.write(-127);
     encValue = readEncoder();
     Serial.println(encValue);
     readVolts();
   }
-  delay(100);
+  while(1){};
 }
 
 long readEncoder()
