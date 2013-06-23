@@ -1,0 +1,15 @@
+#!/bin/bash
+
+echo "Recording... Press Ctrl+C to Stop."
+
+./speech2Text
+
+QUESTION=$(cat stt.txt)
+echo "Me: ", $QUESTION
+
+ANSWER=$(python askWolfram.py $QUESTION)
+echo "Robot: ", $ANSWER
+
+./sayText $ANSWER
+
+
