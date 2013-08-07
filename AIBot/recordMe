@@ -1,11 +1,10 @@
 #!/bin/bash
 
 FILENAME=$(date +"%Y%m%d_%H%M")
-LOC='/home/pi/workspace/MySmartBot'
+LOC='/home/pi/workspace/AIBot'
 
 #record with sudo since arecord seems to want root privledges
-#arecord -f dat -d $1 ${FILENAME}.wav
-arecord -f dat -d 3600 ${LOC}/${FILENAME}.wav
+arecord -D "plughw:1,0" -f dat -d 10 ${LOC}/${FILENAME}.wav
 [ $? -eq 0 ] || exit $?
 
 #convert to mp3 (64Kpbs) 
