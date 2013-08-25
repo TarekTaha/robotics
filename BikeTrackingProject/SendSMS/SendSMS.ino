@@ -4,7 +4,7 @@
  */
 
 #define cell Serial1  // We need to create a serial port on D2/D3 to talk to the GSM module
-char mobilenumber[] = "0433292432";  // Replace xxxxxxxx with the recipient's mobile number
+char mobilenumber[] = "0433292xxx";  // Replace xxxxxxxx with the recipient's mobile number
 void setup()
 {  
   //Initialize serial ports for communication.
