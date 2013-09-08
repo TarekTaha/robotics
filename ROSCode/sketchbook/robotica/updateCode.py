@@ -57,6 +57,7 @@ while True:
     process = subprocess.Popen(["rosrun", "rosserial_python","serial_node.py","/dev/ttyUSB0"], stdout=subprocess.PIPE)
     output = process.communicate()[0]    
   time.sleep(delayTime)  # Delay for 1 minute (60 seconds)
+
 #killall -9 roscore
 #killall -9 rosrun
 #killall -9 rostopic
