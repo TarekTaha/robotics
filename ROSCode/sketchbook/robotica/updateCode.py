@@ -25,7 +25,9 @@ getLock('robotica')
 # 4- Upload the binary to the micro
 # 5- Re-run rosserial
 
-delayTime = 20 # delay between each checks in seconds
+delayTime  = 20 # delay between each checks in seconds
+scriptPath = os.path.dirname(os.path.abspath(__file__))
+os.chdir(scriptPath)
 
 def killProcessByName(scriptName):
   process = subprocess.Popen(["ps", "-eo","pid,command"], stdout=subprocess.PIPE)
