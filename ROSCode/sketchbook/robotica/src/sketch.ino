@@ -100,7 +100,7 @@ void setup()
 long int lastMillis = millis();
 void loop()
 {
-  if( (millis() - lastMillis) > 100)
+  if( (millis() - lastMillis) > 20)
   {
     sonar_msg.data = sonarDist();
     nh.spinOnce();
