@@ -39,6 +39,11 @@ def killProcessByName(scriptName):
       print pid
       os.system('kill -9 ' + pid)
 
+def restartProgram():
+  python = sys.executable
+  os.execl(python, python, * sys.argv)
+  exit("Restarting script")
+
 while True:
   print "Check Github updates every: " + str(delayTime) + ' seconds'
   process = subprocess.Popen(["git", "pull"], stdout=subprocess.PIPE)
@@ -57,4 +62,5 @@ while True:
     output = process.communicate()[0]       
     # Step 5: Run ros-serial again
     process = subprocess.Popen(["rosrun", "rosserial_python","serial_node.py","/dev/ttyUSB0"])
+    restartProgram()
   time.sleep(delayTime)
