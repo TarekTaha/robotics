@@ -103,13 +103,13 @@ void loop()
   if( (millis() - lastMillis) > 100)
   {
     sonar_msg.data = sonarDist();
-    nh.spin();
+    nh.spinOnce();
     motorVolt_msg.data = readVolts();
-    nh.spin();
+    nh.spinOnce();
     pub_sonar.publish(&sonar_msg);
-    nh.spin();
+    nh.spinOnce();
     pub_motorVolt.publish(&motorVolt_msg);
-    nh.spin();
+    nh.spinOnce();
     lastMillis = millis();
   }
   nh.spinOnce();
