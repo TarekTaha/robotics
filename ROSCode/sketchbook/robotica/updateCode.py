@@ -63,8 +63,8 @@ while True:
     print output
     # Step 4: upload the binary
     process = subprocess.Popen(["ino", "upload","-m","atmega328"], stdout=subprocess.PIPE)
-    output = process.communicate()[0]       
+    output = process.communicate()[0]
     # Step 5: Run ros-serial again
-    process = subprocess.Popen(["rosrun", "rosserial_python","serial_node.py","/dev/ttyUSB0"])
+    process = subprocess.Popen(["rosrun", "rosserial_python","serial_node.py","/dev/ttyUSB0","_baud:=115200"])
     restartProgram()
   time.sleep(delayTime)
