@@ -102,6 +102,7 @@ void loop()
 {
   if( (millis() - lastMillis) > 20)
   {
+    lastMillis = millis();    
     sonar_msg.data = sonarDist();
     nh.spinOnce();
     motorVolt_msg.data = readVolts();
@@ -110,7 +111,6 @@ void loop()
     nh.spinOnce();
     pub_motorVolt.publish(&motorVolt_msg);
     nh.spinOnce();
-    lastMillis = millis();
   }
   nh.spinOnce();
   delay(1);
