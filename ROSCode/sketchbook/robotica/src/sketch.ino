@@ -4,7 +4,8 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt32.h>
 #include <SoftwareSerial.h>
-#define CMD                 (byte)0x00              //  MD25 command byte of 0
+//  MD25 command byte of 0
+#define CMD                 (byte)0x00              
 #define GET_SPEED           0x21
 #define GET_SPEED           0x22
 #define GET_ENCODER1        0x23
