@@ -95,6 +95,7 @@ void setup()
   servo.attach(8); //attach it to pin 9
   mySerial.begin(19200);  
 }
+
 long int lastMillis = millis();
 void loop()
 {
