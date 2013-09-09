@@ -88,7 +88,7 @@ double sonarDist()
 void setup()
 {
   pinMode(13, OUTPUT);
-  nh.getHardware().(115200);
+  nh.getHardware()->setBaud(115200);
   nh.initNode();
   nh.subscribe(sub_servo);
   nh.advertise(pub_sonar);
