@@ -40,6 +40,7 @@ def killProcessByName(scriptName):
       os.system('kill -9 ' + pid)
 
 def restartProgram():
+  print 'Restarting Script'
   python = sys.executable
   os.execl(python, python, * sys.argv)
   exit("Restarting script")
