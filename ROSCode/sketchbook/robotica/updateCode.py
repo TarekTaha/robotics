@@ -17,7 +17,7 @@ def getLock(process_name):
         sys.exit()
 getLock('robotica')
 
-print 'Starting'    
+print 'Starting Script'    
 # This script will run on the raspberry pi, check if the microcontroller code changed then compile and 
 # and re-upload it once done, steps:
 # 1- Check if the code changed (git pull)
