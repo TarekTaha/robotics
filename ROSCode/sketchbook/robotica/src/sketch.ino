@@ -88,7 +88,7 @@ double sonarDist()
 void setup()
 {
   pinMode(13, OUTPUT);
-  nh.setBaud(115200);
+  nh.getHardware()->(115200);
   nh.initNode();
   nh.subscribe(sub_servo);
   nh.advertise(pub_sonar);
@@ -103,9 +103,13 @@ void loop()
   if( (millis() - lastMillis) > 100)
   {
     sonar_msg.data = sonarDist();
+    nh.spin();
     motorVolt_msg.data = readVolts();
+    nh.spin();
     pub_sonar.publish(&sonar_msg);
+    nh.spin();
     pub_motorVolt.publish(&motorVolt_msg);
+    nh.spin();
     lastMillis = millis();
   }
   nh.spinOnce();
