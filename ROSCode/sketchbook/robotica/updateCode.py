@@ -16,7 +16,8 @@ def getLock(process_name):
         print 'Only one instance of this script is allowed to run'
         sys.exit()
 getLock('robotica')
-    
+
+print 'Starting'    
 # This script will run on the raspberry pi, check if the microcontroller code changed then compile and 
 # and re-upload it once done, steps:
 # 1- Check if the code changed (git pull)
