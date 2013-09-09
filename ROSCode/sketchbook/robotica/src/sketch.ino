@@ -28,7 +28,6 @@
 #define DISABLE_TIMEOUT     0x38    //MD25 will continuously output with no regular commands
 #define ENABLE_TIMEOUT      0x39    //MD25 output will stop after 2 seconds without communication
 
-
 //Other General 
 Servo servo;
 SoftwareSerial mySerial(2,3); // RX, TX
