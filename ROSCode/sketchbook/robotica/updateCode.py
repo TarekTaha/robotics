@@ -15,7 +15,8 @@ def getLock(process_name):
     except socket.error:
         print 'Only one instance of this script is allowed to run'
         sys.exit()
-getLock('robotica')
+        
+# getLock('robotica')
 
 print 'Starting Script'    
 # This script will run on the raspberry pi, check if the microcontroller code changed then compile and 
