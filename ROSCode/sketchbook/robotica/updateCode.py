@@ -28,7 +28,7 @@ print 'Starting Script'
 # 4- Upload the binary to the micro
 # 5- Re-run rosserial
 
-delayTime  = 20 # delay between each checks in seconds
+delayTime  = 30 # delay between each checks in seconds
 scriptPath = os.path.dirname(os.path.abspath(__file__))
 os.chdir(scriptPath)
 
