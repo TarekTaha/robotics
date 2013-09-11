@@ -249,7 +249,7 @@ int getVersion()
   motorController.write(GET_VER);
   // Wait for byte to become available
   while(motorController.available() < 1){}                                        
-  returns motorController.read();    
+  return motorController.read();    
 }
 
 void setMotorsMode(int mode)
