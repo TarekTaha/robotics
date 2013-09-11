@@ -89,7 +89,7 @@ ros::Subscriber<std_msgs::UInt16> sub_servo("servo", servo_cb);
 
 void move_cb( const std_msgs::UInt16& cmd_msg)
 {
-  move(cmd_msg.data);
+  move(cmd_msg.data,50);
 }
 ros::Subscriber<std_msgs::UInt16> sub_robotMove("robotMove", move_cb);
 
