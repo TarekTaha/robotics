@@ -34,6 +34,24 @@
 #define DISABLE_TIMEOUT     0x38    //MD25 will continuously output with no regular commands
 #define ENABLE_TIMEOUT      0x39    //MD25 output will stop after 2 seconds without communication
 
+
+/*
+ Motor Modes 
+ The mode command changes the way the speed/turn values are used. The options being:
+  0,    (Default Setting) If a value of 0 is written then the speed registers is 
+        literal speeds in the range of 0 (Full Reverse)  128 (Stop)   255 (Full Forward).
+  1,    Mode 1 is similar to Mode 0, except that the speed values are interpreted 
+        as signed values. The range being -128 (Full Reverse)   0 (Stop)   127 (Full Forward).
+  2,    Writing a value of  2 to the mode will make speed1 control both motors speed, 
+        and speed2 becomes the turn value. Data is in the range of 0 (Full Reverse)  128 (Stop)  255 (Full  Forward).
+  3,    Mode 3 is similar to Mode 2, except that the speed values are interpreted as signed values. 
+        Data is in the range of -128  (Full Reverse)  0 (Stop)   127 (Full Forward) 
+ */
+#define MOTORS_LITERAL      0x00
+#define MOTORS_LITERAL_SIG  0x01
+#define MOTORS_PAIR         0x02
+#define MOTORS_PAIR_SIG     0x03
+
 #define M_RX                0x02    // RX and TX pins used for motorController
 #define M_TX                0x03
 #define STEPS_PER_REV       360
@@ -41,7 +59,7 @@
 #define DIST_PER_REV        WHEEL_DIAMETER*PI
 #define DIST_PER_STEP       DIST_PER_REV/double(STEPS_PER_REV)
 #define STEPS_PER_CM        STEPS_PER_REV/double(DIST_PER_REV)
-#define MOTOR_DELAY         5       // delay in ms to allow the motor controller to react
+#define MOTOR_DELAY         10     // delay in us to allow the motor controller to react
 
 //Other General 
 SoftwareSerial motorController = SoftwareSerial(M_RX, M_TX);
@@ -214,6 +232,36 @@ void rotate(int rotationalSpeed, int angle2Rotate)
   motorController.write(stopSpeed);
 }
 
+void setAcceleration(int acc)
+{
+  // Set MD25 accelleration value
+  motorController.write(CMD);                                            
+  motorController.write(SET_ACCELERATION);
+  motorController.write(10);
+  // Wait for this to be processed
+  delayMicroseconds(MOTOR_DELAY);    
+}
+
+int getVersion()
+{
+  // Get software version of MD25
+  motorController.write(CMD);                                            
+  motorController.write(GET_VER);
+  // Wait for byte to become available
+  while(motorController.available() < 1){}                                        
+  returns motorController.read();    
+}
+
+void setMotorsMode(int mode)
+{
+  // Set mode to 2, Both motors controlled by writing to speed 1
+  motorController.write(CMD);                                            
+  motorController.write(SET_MODE);
+  motorController.write(3);  
+  // Wait for this to be processed
+  delayMicroseconds(MOTOR_DELAY);  
+}
+
 double microsecondsToCentimeters(long microseconds)
 {
   // The speed of sound is 340 m/s or 29 microseconds per centimeter.
@@ -250,31 +298,13 @@ void setup()
   servo.attach(8);
   
   motorController.begin(19200);  
+  softwareRev = getVersion();  
+  setAcceleration(10);   
+  //Just for precaution
   stopMotors();
-  
-  // Set MD25 accelleration value
-  motorController.write(CMD);                                            
-  motorController.write(SET_ACCELERATION);
-  motorController.write(10);
-
-  // Wait for this to be processed
-  delayMicroseconds(10);                                        
-  resetEncoders();
-  // Wait for this to be processed
-  delayMicroseconds(10);                                        
-  
-  // Set mode to 2, Both motors controlled by writing to speed 1
-  motorController.write(CMD);                                            
-  motorController.write(SET_MODE);
-  motorController.write(3);    
-
-  // Get software version of MD25
-  motorController.write(CMD);                                            
-  motorController.write(GET_VER);
-
-  // Wait for byte to become available
-  while(motorController.available() < 1){}                                        
-  softwareRev = motorController.read();  
+  setMotorsMode(MOTORS_PAIR_SIG);
+  stopMotors();
+  resetEncoders();   
 }
 
 long int lastMillis = millis();
