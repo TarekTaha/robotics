@@ -87,11 +87,11 @@ void servo_cb( const std_msgs::UInt16& cmd_msg)
 }
 ros::Subscriber<std_msgs::UInt16> sub_servo("servo", servo_cb);
 
-void move_cb( const std_msgs::UInt16& cmd_msg)
+void move_cb( const std_msgs::Float32& cmd_msg)
 {
   move(cmd_msg.data,50);
 }
-ros::Subscriber<std_msgs::UInt16> sub_robotMove("robotMove", move_cb);
+ros::Subscriber<std_msgs::Float32> sub_robotMove("robotMove", move_cb);
 
 byte readVolts()
 {
@@ -145,7 +145,7 @@ void resetEncoders()
 {
   motorController.write(CMD);     
   motorController.write(RESET_ENCODERS);
-  delay(MOTOR_DELAY);
+  delayMicroseconds(MOTOR_DELAY);
 }
 
 void stopMotors()
@@ -158,6 +158,7 @@ void stopMotors()
   motorController.write(CMD);
   motorController.write(SET_SPEED1);
   motorController.write(stopSpeed);  
+  delayMicroseconds(MOTOR_DELAY);
 }
 
 void move(double distance,int speed)
@@ -183,7 +184,7 @@ void move(double distance,int speed)
       //Serial.print(encValue,DEC); 
       //Serial.print(" distance in cm:"); 
       //Serial.println(DIST_PER_STEP*encValue,DEC);
-      delay(MOTOR_DELAY);
+      delayMicroseconds(MOTOR_DELAY);
     }
   }
   else
@@ -199,13 +200,14 @@ void move(double distance,int speed)
       //Serial.print(encValue,DEC); 
       //Serial.print(" distance in cm:"); 
       //Serial.println(DIST_PER_STEP*encValue,DEC);
-      delay(MOTOR_DELAY);
+      delayMicroseconds(MOTOR_DELAY);
     }
   }
   int stopSpeed = 0;
   motorController.write(CMD);
   motorController.write(SET_SPEED1);
   motorController.write(stopSpeed);  
+  delayMicroseconds(MOTOR_DELAY);
 }
 
 void rotate(int rotationalSpeed, int angle2Rotate)
@@ -232,12 +234,13 @@ void rotate(int rotationalSpeed, int angle2Rotate)
     //Serial.print(encValue,DEC); 
     //Serial.print(" Angle: "); 
     //Serial.println(angle*180/PI,DEC);    
-    delay(MOTOR_DELAY);    
+    delayMicroseconds(MOTOR_DELAY);    
   }
   int stopSpeed = 0;
   motorController.write(CMD);
   motorController.write(SET_SPEED2_TURN);
   motorController.write(stopSpeed);
+  delayMicroseconds(MOTOR_DELAY);
 }
 
 void setAcceleration(int acc)
