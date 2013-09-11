@@ -68,13 +68,16 @@ const int pingPin = 11;
 long encValue     = 0;
 byte softwareRev  = 0;
 
+//Prototypes
+void move(double distance,int speed);
+
 // ROS Related
 std_msgs::Float32 sonar_msg;
 std_msgs::Float32 motorVolt_msg;
 ros::Publisher pub_sonar("sonar", &sonar_msg);
 ros::Publisher pub_motorVolt("motorVolt", &motorVolt_msg);
 ros::NodeHandle  nh;
-/*
+
 void servo_cb( const std_msgs::UInt16& cmd_msg)
 {
   //set servo angle, should be from 0-180  
@@ -83,7 +86,12 @@ void servo_cb( const std_msgs::UInt16& cmd_msg)
   digitalWrite(13, HIGH-digitalRead(13));
 }
 ros::Subscriber<std_msgs::UInt16> sub_servo("servo", servo_cb);
-*/
+
+void move_cb( const std_msgs::UInt16& cmd_msg)
+{
+  move(cmd_msg.data);
+}
+ros::Subscriber<std_msgs::UInt16> sub_robotMove("robotMove", move_cb);
 
 byte readVolts()
 {
@@ -292,7 +300,8 @@ void setup()
   pinMode(13, OUTPUT);
   nh.getHardware()->setBaud(115200);
   nh.initNode();
-  //nh.subscribe(sub_servo);
+  nh.subscribe(sub_servo);
+  nh.subscribe(sub_robotMove);
   nh.advertise(pub_sonar);
   nh.advertise(pub_motorVolt);
   servo.attach(8);
@@ -310,7 +319,7 @@ void setup()
 long int lastMillis = millis();
 void loop()
 {
-  if( (millis() - lastMillis) > 20)
+  if( (millis() - lastMillis) > 100)
   {
     lastMillis = millis();    
     sonar_msg.data = sonarDist();
@@ -323,5 +332,4 @@ void loop()
     nh.spinOnce();
   }
   nh.spinOnce();
-  delay(1);
 }
