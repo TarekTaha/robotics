@@ -266,10 +266,9 @@ int getVersion()
 
 void setMotorsMode(int mode)
 {
-  // Set mode to 2, Both motors controlled by writing to speed 1
   motorController.write(CMD);                                            
   motorController.write(SET_MODE);
-  motorController.write(3);  
+  motorController.write(mode);  
   // Wait for this to be processed
   delayMicroseconds(MOTOR_DELAY);  
 }
@@ -315,6 +314,7 @@ void setup()
   setAcceleration(10);   
   //Just for precaution
   stopMotors();
+  // Set mode to 2, Both motors controlled by writing to speed 1
   setMotorsMode(MOTORS_PAIR_SIG);
   stopMotors();
   resetEncoders();   
