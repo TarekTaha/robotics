@@ -43,12 +43,9 @@
 #define STEPS_PER_CM        STEPS_PER_REV/double(DIST_PER_REV)
 #define MOTOR_DELAY         5       // delay in ms to allow the motor controller to react
 
-// Define the serial port used to control the motors
-SoftwareSerial motorController = SoftwareSerial(M_RX, M_TX);         
 //Other General 
-
+SoftwareSerial motorController = SoftwareSerial(M_RX, M_TX);
 Servo servo;
-SoftwareSerial motorController(2,3); // RX, TX
 const int pingPin = 11;
 long encValue     = 0;
 byte softwareRev  = 0;
