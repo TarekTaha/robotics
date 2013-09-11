@@ -137,6 +137,7 @@ long readEncoder()
   result2 += motorController.read();
   result2 <<= 8;
   result2 += motorController.read();
+  sleep(1);
   return result1;                                   
 }
 
