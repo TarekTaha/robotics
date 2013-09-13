@@ -367,12 +367,12 @@ void loop()
     robotPoseMsg.header.stamp = nh.now();
     robotPoseBroadcaster.sendTransform(robotPoseMsg);    
     nh.spinOnce();
-    */
     readEncoders(lastEncoder1Val,lastEncoder2Val);
     encoder1_msg.data  = lastEncoder1Val;
     nh.spinOnce();
     encoder2_msg.data  = lastEncoder2Val;
     nh.spinOnce();
+    */
     sonar_msg.data     = sonarDist();
     nh.spinOnce();
     motorVolt_msg.data = readVolts();
