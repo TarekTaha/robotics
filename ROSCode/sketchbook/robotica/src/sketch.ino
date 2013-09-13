@@ -4,6 +4,7 @@
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt32.h>
 #include <SoftwareSerial.h>
+#include <tf/transform_broadcaster.h>
 
 // Values of 0 being sent using serial.write() 
 // have to be casted to a byte to stop them 
@@ -74,9 +75,20 @@ void move(double distance,int speed);
 // ROS Related
 std_msgs::Float32 sonar_msg;
 std_msgs::Float32 motorVolt_msg;
+std_msgs::Int32 encoder1_msg;
+std_msgs::Int32 encoder2_msg;
+geometry_msgs::TransformStamped robotPoseMsg;
+
 ros::Publisher pub_sonar("sonar", &sonar_msg);
+ros::Publisher pub_sonar("encoder1", &encoder1_msg);
+ros::Publisher pub_sonar("encoder2", &encoder2_msg);
+
 ros::Publisher pub_motorVolt("motorVolt", &motorVolt_msg);
 ros::NodeHandle  nh;
+tf::TransformBroadcaster robotPoseBroadcaster;
+
+char base_link[] = "/base_link";
+char odom[]      = "/odom";
 
 void servo_cb( const std_msgs::UInt16& cmd_msg)
 {
@@ -108,14 +120,15 @@ byte readVolts()
   return batteryVolts;
 }
 
-// Function to read the value of both encoders, returns value of first encoder
-long readEncoder()
+// Function to read the value of both encoders
+bool readEncoders(long &encoder1,long encoder2)
 {
   long result1 = 0; 
   long result2 = 0;
   motorController.write(CMD);
   motorController.write(GET_ENCODERS);
   // Wait for 8 bytes, first 4 encoder 1 values second 4 encoder 2 values 
+  // TODO::timeout and return false
   while(motorController.available() < 8)
   {
   }
@@ -138,7 +151,17 @@ long readEncoder()
   result2 <<= 8;
   result2 += motorController.read();
   delay(1);
-  return result1;                                   
+  encoder1 = result1;
+  encoder2 = result2;
+  return true;                                   
+}
+
+// Helper Function to read the value of both encoders, returns value of first encoder
+long readEncoder()
+{
+  long encoder1,encoder2;
+  readEncoders(encoder1,encoder2);
+  return encoder1;
 }
 
 // Reset the encoder registers to 0
@@ -307,6 +330,8 @@ void setup()
   nh.subscribe(sub_robotMove);
   nh.advertise(pub_sonar);
   nh.advertise(pub_motorVolt);
+  robotPoseBroadcaster.init(nh);
+  
   servo.attach(8);
   
   motorController.begin(19200);  
@@ -319,14 +344,31 @@ void setup()
   stopMotors();
   resetEncoders();   
 }
-
+  
 long int lastMillis = millis();
+long lastEncoder1Val,lastEncoder2Val;
 void loop()
 {
   if( (millis() - lastMillis) > 100)
   {
     lastMillis = millis();    
-    sonar_msg.data = sonarDist();
+    // robot Transformation x y z yaw pitch roll frame_id child_frame_id period_in_ms    
+    robotPoseMsg.header.frame_id         = odom;
+    robotPoseMsg.child_frame_id          = base_link;
+    robotPoseMsg.transform.translation.x = 1.0; 
+    robotPoseMsg.transform.rotation.x    = 0.0;
+    robotPoseMsg.transform.rotation.y    = 0.0; 
+    robotPoseMsg.transform.rotation.z    = 0.0; 
+    robotPoseMsg.transform.rotation.w    = 1.0;  
+    robotPoseMsg.header.stamp = nh.now();
+    robotPoseBroadcaster.sendTransform(robotPoseMsg);    
+    nh.spinOnce();
+    readEncoders(lastEncoder1Val,lastEncoder2Val);
+    encoder1_msg.data  = lastEncoder1Val;
+    nh.spinOnce();
+    encoder2_msg.data  = lastEncoder2Val;
+    nh.spinOnce();
+    sonar_msg.data     = sonarDist();
     nh.spinOnce();
     motorVolt_msg.data = readVolts();
     nh.spinOnce();
