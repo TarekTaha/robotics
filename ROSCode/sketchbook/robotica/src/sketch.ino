@@ -3,6 +3,7 @@
 #include <std_msgs/UInt16.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt32.h>
+#include <std_msgs/Int32.h>
 #include <SoftwareSerial.h>
 #include <tf/transform_broadcaster.h>
 
