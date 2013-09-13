@@ -355,6 +355,7 @@ void loop()
   if( (millis() - lastMillis) > 100)
   {
     lastMillis = millis();    
+    /*
     // robot Transformation x y z yaw pitch roll frame_id child_frame_id period_in_ms    
     robotPoseMsg.header.frame_id         = odom;
     robotPoseMsg.child_frame_id          = base_link;
@@ -366,6 +367,7 @@ void loop()
     robotPoseMsg.header.stamp = nh.now();
     robotPoseBroadcaster.sendTransform(robotPoseMsg);    
     nh.spinOnce();
+    */
     readEncoders(lastEncoder1Val,lastEncoder2Val);
     encoder1_msg.data  = lastEncoder1Val;
     nh.spinOnce();
