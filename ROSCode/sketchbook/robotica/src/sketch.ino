@@ -76,8 +76,8 @@ void move(double distance,int speed);
 // ROS Related
 std_msgs::Float32 sonar_msg;
 std_msgs::Float32 motorVolt_msg;
-std_msgs::Float32 encoder1_msg;
-std_msgs::Float32 encoder2_msg;
+std_msgs::Int32   encoder1_msg;
+std_msgs::Int32   encoder2_msg;
 geometry_msgs::TransformStamped robotPoseMsg;
 
 ros::Publisher pub_sonar    ("sonar"   ,  &sonar_msg);
@@ -347,8 +347,9 @@ void setup()
   resetEncoders();   
 }
   
-long int lastMillis = millis();
-long lastEncoder1Val,lastEncoder2Val;
+long lastMillis = millis();
+// int32_t
+long lastEncoder1Val,lastEncoder2Val; 
 void loop()
 {
   if( (millis() - lastMillis) > 100)
@@ -366,12 +367,15 @@ void loop()
     robotPoseMsg.header.stamp = nh.now();
     robotPoseBroadcaster.sendTransform(robotPoseMsg);    
     nh.spinOnce();
+    */
     readEncoders(lastEncoder1Val,lastEncoder2Val);
     encoder1_msg.data  = lastEncoder1Val;
+    pub_encoder1.publish(&encoder1_msg);
     nh.spinOnce();
     encoder2_msg.data  = lastEncoder2Val;
-    nh.spinOnce();
-    */
+    pub_encoder2.publish(&encoder2_msg);
+    nh.spinOnce();    
+    
     sonar_msg.data     = sonarDist();
     nh.spinOnce();
     motorVolt_msg.data = readVolts();
