@@ -329,8 +329,10 @@ void setup()
   nh.subscribe(sub_servo);
   nh.subscribe(sub_robotMove);
   nh.advertise(pub_sonar);
+  /*
   nh.advertise(pub_encoder1);
   nh.advertise(pub_encoder2);
+  */
   nh.advertise(pub_motorVolt);
   //robotPoseBroadcaster.init(nh);
   
