@@ -384,8 +384,9 @@ void loop()
     nh.spinOnce();
     pub_sonar.publish(&sonar_msg);
     nh.spinOnce();
-    pub_motorVolt.publish(&motorVolt_msg);
-    nh.spinOnce();
+
+    //pub_motorVolt.publish(&motorVolt_msg);
+    //nh.spinOnce();
   }
   nh.spinOnce();
 }
