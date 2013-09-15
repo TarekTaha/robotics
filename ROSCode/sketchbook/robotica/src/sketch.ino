@@ -76,8 +76,8 @@ void move(double distance,int speed);
 // ROS Related
 std_msgs::Float32 sonar_msg;
 std_msgs::Float32 motorVolt_msg;
-//std_msgs::Int32   encoder1_msg;
-//std_msgs::Int32   encoder2_msg;
+std_msgs::Int32   encoder1_msg;
+std_msgs::Int32   encoder2_msg;
 geometry_msgs::TransformStamped robotPoseMsg;
 
 ros::Publisher pub_sonar    ("sonar"   ,  &sonar_msg);
