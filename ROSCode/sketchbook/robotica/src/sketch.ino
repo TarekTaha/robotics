@@ -81,8 +81,8 @@ std_msgs::Int32   encoder2_msg;
 geometry_msgs::TransformStamped robotPoseMsg;
 
 ros::Publisher pub_sonar    ("sonar"   ,  &sonar_msg);
-//ros::Publisher pub_encoder1 ("encoder1",  &encoder1_msg);
-//ros::Publisher pub_encoder2 ("encoder2",  &encoder2_msg);
+ros::Publisher pub_encoder1 ("encoder1",  &encoder1_msg);
+ros::Publisher pub_encoder2 ("encoder2",  &encoder2_msg);
 ros::Publisher pub_motorVolt("motorVolt", &motorVolt_msg);
 ros::NodeHandle  nh;
 //tf::TransformBroadcaster robotPoseBroadcaster;
