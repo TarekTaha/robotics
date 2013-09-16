@@ -85,7 +85,7 @@ ros::Publisher pub_encoder1 ("encoder1",  &encoder1_msg);
 ros::Publisher pub_encoder2 ("encoder2",  &encoder2_msg);
 ros::Publisher pub_motorVolt("motorVolt", &motorVolt_msg);
 ros::NodeHandle  nh;
-//tf::TransformBroadcaster robotPoseBroadcaster;
+tf::TransformBroadcaster robotPoseBroadcaster;
 
 char base_link[] = "/base_link";
 char odom[]      = "/odom";
@@ -332,7 +332,7 @@ void setup()
   nh.advertise(pub_encoder1);
   nh.advertise(pub_encoder2);
   nh.advertise(pub_motorVolt);
-  //robotPoseBroadcaster.init(nh);
+  robotPoseBroadcaster.init(nh);
   
   servo.attach(8);
   
