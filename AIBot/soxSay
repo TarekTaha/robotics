@@ -31,14 +31,18 @@ say $*
 done
 }
 
-sox -t alsa hw:1,0 test.wav silence 1 0 2% -1 0.5 5% &
+#sox -t alsa hw:1,0 test.wav silence 1 0 2% -1 0.5 5% &
+sox -r 16000 -t alsa hw:2,0 recording.flac silence  1 0 2% -1 0.5 5% &
+#sox -r 16000 -t alsa hw:2,0 default recording.flac silence  1 0.1 3% 1 0.5 5% &
+#rec --encoding signed-integer --bits 16 --channels 1 --rate 16000 test.wav silence 1 0 2% -1 0.5 5%
+
 sox_pid=$!
 
 while [ $count -le 9 ]
 do
    
-size=$(stat --printf="%s" test.wav)
-
+size=$(stat --printf="%s" recording.flac)
+echo $size
 if [ $size -gt $lastsize ]
 	then
 		if [ $first -eq 0 ]
@@ -53,8 +57,9 @@ if [ $size -gt $lastsize ]
 			then
 				echo "Submitting"
 				kill $sox_pid
-				ffmpeg -loglevel panic -y -i test.wav -ar 16000 -acodec flac file.flac
-				wget -q -U "Mozilla/5.0" --post-file file.flac --header "Content-Type: audio/x-flac; rate=16000" -O - "http://www.google.com/speech-api/v1/recognize?lang=en&client=chromium" | cut -d\" -f12 >stt.txt
+				#ffmpeg -loglevel panic -y -i test.wav -ar 16000 -acodec flac file.flac
+				#wget -q -U "Mozilla/5.0" --post-file file.flac --header "Content-Type: audio/x-flac; rate=16000" -O - "http://www.google.com/speech-api/v1/recognize?lang=en&client=chromium" | cut -d\" -f12 >stt.txt
+				wget -q -U "Mozilla/5.0" --post-file recording.flac --header="Content-Type: audio/x-flac; rate=16000" -O - "https://www.google.com/speech-api/v2/recognize?xjerr=1&client=chromium&lang=en-US&maxresults=10&pfilter=0&xjerr=1&key=AIzaSyByL8siBe1B6NSBPkVwCLr10_xkRJHVxdg" | cut -d\" -f12 >stt.txt
 				COMMAND=$(cat stt.txt)
 				echo $COMMAND
 				# sayAll "$(cat stt.txt)"
@@ -68,12 +73,15 @@ if [ $size -gt $lastsize ]
 					ANSWER=$(python askWolfram.py $COMMAND)
  					#say "I would ask you now to read the weather forecast! Bring it to me!"
  					sayAll $ANSWER
-				else
+				elif [[ $COMMAND != "" ]]
+				then
  					echo "Asking Wolfram"
  					ANSWER=$(python askWolfram.py $COMMAND)
  					echo $ANSWER
 					sayAll $ANSWER
-				fi
+				else
+          echo "Don't know what you just said"
+        fi
 
 			sleep 1
 			bash soxSay
